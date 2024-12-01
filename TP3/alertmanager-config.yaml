@@ -1,0 +1,16 @@
+alertmanager:
+  config:
+	global:
+  		smtp_smarthost: 'smtp.gmail.com:587' # Replace with your SMTP server and port
+  		smtp_from: 'alertmanager@tp-devops.com'  # Sender's email address
+  		smtp_auth_username: ‘minoring75@gmail.com' # Your email username
+  		smtp_auth_password: ‘password’   # Your email password (use an app-specific password if required)
+  		smtp_require_tls: true
+
+	route:
+  		receiver: 'email-alert' # Default route sends all alerts to this receiver
+
+	receivers:
+  		- name: 'email-alert'
+    	email_configs:
+      		- to: 'hugo.panel@efrei.net' # Replace with recipient's email address
