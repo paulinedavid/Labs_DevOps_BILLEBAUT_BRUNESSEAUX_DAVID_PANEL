@@ -1,0 +1,79 @@
+- name: Install Grafana Loki Agent (Promtail)
+  hosts: all
+  become: yes
+
+  tasks:
+    - name: Download Promtail binary
+      get_url:
+        url: "https://github.com/grafana/loki/releases/download/v2.9.0/promtail-linux-amd64.zip"
+        dest: /tmp/promtail.zip
+
+    - name: Install unzip
+      apt:
+        name: unzip
+        state: present
+
+    - name: Unzip Promtail binary
+      unarchive:
+        src: /tmp/promtail.zip
+        dest: /usr/local/bin/
+        remote_src: yes
+
+    - name: Make Promtail executable
+      file:
+        path: /usr/local/bin/promtail-linux-amd64
+        mode: '0755'
+
+    - name: Create Promtail configuration directory
+      file:
+        path: /etc/promtail
+        state: directory
+        mode: '0755'
+
+    - name: Upload Promtail configuration file
+      copy:
+        dest: /etc/promtail/config.yaml
+        content: |
+          server:
+            http_listen_port: 9080
+            grpc_listen_port: 0
+
+          clients:
+            - url: http://localhost:3100/loki/api/v1/push
+
+          positions:
+            filename: /var/log/positions.yaml
+
+          scrape_configs:
+            - job_name: system
+              static_configs:
+                - targets:
+                    - localhost
+                  labels:
+                    job: varlogs
+                    __path__: /var/log/*.log
+
+    - name: Create Promtail service file
+      copy:
+        dest: /etc/systemd/system/promtail.service
+        content: |
+          [Unit]
+          Description=Promtail service
+          After=network.target
+
+          [Service]
+          ExecStart=/usr/local/bin/promtail-linux-amd64 --config.file=/etc/promtail/config.yaml
+          Restart=always
+          User=root
+
+          [Install]
+          WantedBy=multi-user.target
+
+    - name: Reload systemd daemon
+      command: systemctl daemon-reload
+
+    - name: Start and enable Promtail service
+      systemd:
+        name: promtail
+        state: started
+        enabled: yes
